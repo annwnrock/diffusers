@@ -38,10 +38,7 @@ def get_tests_dir(append_path=None):
     while not tests_dir.endswith("tests"):
         tests_dir = os.path.dirname(tests_dir)
 
-    if append_path:
-        return os.path.join(tests_dir, append_path)
-    else:
-        return tests_dir
+    return os.path.join(tests_dir, append_path) if append_path else tests_dir
 
 
 def parse_flag_from_env(key, default=False):
@@ -72,10 +69,7 @@ def floats_tensor(shape, scale=1.0, rng=None, name=None):
     for dim in shape:
         total_dims *= dim
 
-    values = []
-    for _ in range(total_dims):
-        values.append(rng.random() * scale)
-
+    values = [rng.random() * scale for _ in range(total_dims)]
     return torch.tensor(data=values, dtype=torch.float).view(shape).contiguous()
 
 
