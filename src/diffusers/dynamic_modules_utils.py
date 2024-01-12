@@ -107,7 +107,7 @@ def get_relative_import_files(module_file):
         new_import_files = [f for f in new_import_files if f not in all_relative_imports]
         files_to_check = [f"{f}.py" for f in new_import_files]
 
-        no_change = len(new_import_files) == 0
+        no_change = not new_import_files
         all_relative_imports.extend(files_to_check)
 
     return all_relative_imports
@@ -136,7 +136,7 @@ def check_imports(filename):
         except ImportError:
             missing_packages.append(imp)
 
-    if len(missing_packages) > 0:
+    if missing_packages:
         raise ImportError(
             "This modeling file requires the following packages that were not found in your environment: "
             f"{', '.join(missing_packages)}. Run `pip install {' '.join(missing_packages)}`"
@@ -246,7 +246,7 @@ def get_cached_module_file(
     if os.path.isfile(module_file_or_url):
         resolved_module_file = module_file_or_url
         submodule = "local"
-    elif pretrained_model_name_or_path.count("/") == 0:
+    elif "/" not in pretrained_model_name_or_path:
         # community pipeline on GitHub
         github_url = COMMUNITY_PIPELINES_URL.format(pipeline=pretrained_model_name_or_path)
         try:
@@ -260,7 +260,7 @@ def get_cached_module_file(
                 use_auth_token=False,
             )
             submodule = "git"
-            module_file = pretrained_model_name_or_path + ".py"
+            module_file = f"{pretrained_model_name_or_path}.py"
         except EnvironmentError:
             logger.error(f"Could not locate the {module_file} inside {pretrained_model_name_or_path}.")
             raise
@@ -289,7 +289,7 @@ def get_cached_module_file(
     full_submodule = DIFFUSERS_DYNAMIC_MODULE_NAME + os.path.sep + submodule
     create_dynamic_module(full_submodule)
     submodule_path = Path(HF_MODULES_CACHE) / full_submodule
-    if submodule == "local" or submodule == "git":
+    if submodule in ["local", "git"]:
         # We always copy local files (we could hash the file to see if there was a change, and give them the name of
         # that hash, to only copy when there is a modification but it seems overkill for now).
         # The only reason we do the copy is to avoid putting too many folders in sys.path.

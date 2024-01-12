@@ -82,7 +82,7 @@ def load_state_dict(checkpoint_file: Union[str, os.PathLike]):
                         f"Unable to locate the file {checkpoint_file} which is necessary to load this pretrained "
                         "model. Make sure you have saved the model properly."
                     ) from e
-        except (UnicodeDecodeError, ValueError):
+        except ValueError:
             raise OSError(
                 f"Unable to load weights from pytorch checkpoint file for '{checkpoint_file}' "
                 f"at '{checkpoint_file}'. "
@@ -447,10 +447,7 @@ class ModelMixin(torch.nn.Module):
 
         # Set model in evaluation mode to deactivate DropOut modules by default
         model.eval()
-        if output_loading_info:
-            return model, loading_info
-
-        return model
+        return (model, loading_info) if output_loading_info else model
 
     @classmethod
     def _load_pretrained_model(
@@ -463,7 +460,7 @@ class ModelMixin(torch.nn.Module):
     ):
         # Retrieve missing & unexpected_keys
         model_state_dict = model.state_dict()
-        loaded_keys = [k for k in state_dict.keys()]
+        loaded_keys = list(state_dict.keys())
 
         expected_keys = list(model_state_dict.keys())
 
@@ -514,7 +511,7 @@ class ModelMixin(torch.nn.Module):
                 )
             raise RuntimeError(f"Error(s) in loading state_dict for {model.__class__.__name__}:\n\t{error_msg}")
 
-        if len(unexpected_keys) > 0:
+        if unexpected_keys:
             logger.warning(
                 f"Some weights of the model checkpoint at {pretrained_model_name_or_path} were not used when"
                 f" initializing {model.__class__.__name__}: {unexpected_keys}\n- This IS expected if you are"
@@ -527,7 +524,7 @@ class ModelMixin(torch.nn.Module):
             )
         else:
             logger.info(f"All model checkpoint weights were used when initializing {model.__class__.__name__}.\n")
-        if len(missing_keys) > 0:
+        if missing_keys:
             logger.warning(
                 f"Some weights of {model.__class__.__name__} were not initialized from the model checkpoint at"
                 f" {pretrained_model_name_or_path} and are newly initialized: {missing_keys}\nYou should probably"
@@ -608,7 +605,4 @@ def unwrap_model(model: torch.nn.Module) -> torch.nn.Module:
         model (`torch.nn.Module`): The model to unwrap.
     """
     # since there could be multiple levels of wrapping, unwrap recursively
-    if hasattr(model, "module"):
-        return unwrap_model(model.module)
-    else:
-        return model
+    return unwrap_model(model.module) if hasattr(model, "module") else model

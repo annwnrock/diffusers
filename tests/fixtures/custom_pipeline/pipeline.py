@@ -96,7 +96,8 @@ class CustomLocalPipeline(DiffusionPipeline):
         if output_type == "pil":
             image = self.numpy_to_pil(image)
 
-        if not return_dict:
-            return (image,), "This is a local test"
-
-        return ImagePipelineOutput(images=image), "This is a local test"
+        return (
+            (ImagePipelineOutput(images=image), "This is a local test")
+            if return_dict
+            else ((image,), "This is a local test")
+        )

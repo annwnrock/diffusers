@@ -210,11 +210,7 @@ class LMSDiscreteScheduler(SchedulerMixin, ConfigMixin):
 
         if isinstance(timestep, torch.Tensor):
             timestep = timestep.to(self.timesteps.device)
-        if (
-            isinstance(timestep, int)
-            or isinstance(timestep, torch.IntTensor)
-            or isinstance(timestep, torch.LongTensor)
-        ):
+        if isinstance(timestep, (int, torch.IntTensor, torch.LongTensor)):
             deprecate(
                 "timestep as an index",
                 "0.7.0",
@@ -246,10 +242,13 @@ class LMSDiscreteScheduler(SchedulerMixin, ConfigMixin):
             coeff * derivative for coeff, derivative in zip(lms_coeffs, reversed(self.derivatives))
         )
 
-        if not return_dict:
-            return (prev_sample,)
-
-        return LMSDiscreteSchedulerOutput(prev_sample=prev_sample, pred_original_sample=pred_original_sample)
+        return (
+            LMSDiscreteSchedulerOutput(
+                prev_sample=prev_sample, pred_original_sample=pred_original_sample
+            )
+            if return_dict
+            else (prev_sample,)
+        )
 
     def add_noise(
         self,
@@ -264,7 +263,7 @@ class LMSDiscreteScheduler(SchedulerMixin, ConfigMixin):
 
         schedule_timesteps = self.timesteps
 
-        if isinstance(timesteps, torch.IntTensor) or isinstance(timesteps, torch.LongTensor):
+        if isinstance(timesteps, (torch.IntTensor, torch.LongTensor)):
             deprecate(
                 "timesteps as indices",
                 "0.7.0",
@@ -281,8 +280,7 @@ class LMSDiscreteScheduler(SchedulerMixin, ConfigMixin):
         while len(sigma.shape) < len(original_samples.shape):
             sigma = sigma.unsqueeze(-1)
 
-        noisy_samples = original_samples + noise * sigma
-        return noisy_samples
+        return original_samples + noise * sigma
 
     def __len__(self):
         return self.config.num_train_timesteps

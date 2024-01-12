@@ -58,8 +58,8 @@ LOADABLE_CLASSES = {
 }
 
 ALL_IMPORTABLE_CLASSES = {}
-for library in LOADABLE_CLASSES:
-    ALL_IMPORTABLE_CLASSES.update(LOADABLE_CLASSES[library])
+for value in LOADABLE_CLASSES.values():
+    ALL_IMPORTABLE_CLASSES |= value
 
 
 @dataclass
@@ -140,7 +140,7 @@ class DiffusionPipeline(ConfigMixin):
         model_index_dict.pop("_diffusers_version")
         model_index_dict.pop("_module", None)
 
-        for pipeline_component_name in model_index_dict.keys():
+        for pipeline_component_name in model_index_dict:
             sub_model = getattr(self, pipeline_component_name)
             model_cls = sub_model.__class__
 
@@ -168,7 +168,10 @@ class DiffusionPipeline(ConfigMixin):
         for name in module_names.keys():
             module = getattr(self, name)
             if isinstance(module, torch.nn.Module):
-                if module.dtype == torch.float16 and str(torch_device) in ["cpu", "mps"]:
+                if module.dtype == torch.float16 and str(torch_device) in {
+                    "cpu",
+                    "mps",
+                }:
                     logger.warning(
                         "Pipelines loaded with `torch_dtype=torch.float16` cannot run with `cpu` or `mps` device. It"
                         " is not recommended to move them to `cpu` or `mps` as running them will fail. Please make"
@@ -390,7 +393,10 @@ class DiffusionPipeline(ConfigMixin):
         # some modules can be passed directly to the init
         # in this case they are already instantiated in `kwargs`
         # extract them here
-        expected_modules = set(inspect.signature(pipeline_class.__init__).parameters.keys()) - set(["self"])
+        expected_modules = set(
+            inspect.signature(pipeline_class.__init__).parameters.keys()
+        ) - {"self"}
+
         passed_class_obj = {k: kwargs.pop(k) for k in expected_modules if k in kwargs}
 
         init_dict, _ = pipeline_class.extract_init_dict(config_dict, **kwargs)
@@ -419,7 +425,7 @@ class DiffusionPipeline(ConfigMixin):
                     class_candidates = {c: getattr(library, c) for c in importable_classes.keys()}
 
                     expected_class_obj = None
-                    for class_name, class_candidate in class_candidates.items():
+                    for class_candidate in class_candidates.values():
                         if issubclass(class_obj, class_candidate):
                             expected_class_obj = class_candidate
 
@@ -483,9 +489,7 @@ class DiffusionPipeline(ConfigMixin):
                 f"Pipeline {pipeline_class} expected {expected_modules}, but only {passed_modules} were passed."
             )
 
-        # 5. Instantiate the pipeline
-        model = pipeline_class(**init_kwargs)
-        return model
+        return pipeline_class(**init_kwargs)
 
     @staticmethod
     def numpy_to_pil(images):
@@ -495,9 +499,7 @@ class DiffusionPipeline(ConfigMixin):
         if images.ndim == 3:
             images = images[None, ...]
         images = (images * 255).round().astype("uint8")
-        pil_images = [Image.fromarray(image) for image in images]
-
-        return pil_images
+        return [Image.fromarray(image) for image in images]
 
     def progress_bar(self, iterable):
         if not hasattr(self, "_progress_bar_config"):
